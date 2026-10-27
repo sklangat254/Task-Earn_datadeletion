@@ -1,3 +1,4 @@
+
 import os
 import re
 import time
@@ -8,21 +9,29 @@ from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
 
-# --- Firebase config (set these as environment variables on Render/Vercel — never hardcode secrets in code you might publish or commit) ---
-FB_HOST = os.environ.get("FB_HOST", "https://aviabustout-default-rtdb.firebaseio.com")
-FB_AUTH = os.environ.get("FB_AUTH", "")  # set this in your host's dashboard, do not commit it
+# Firebase configuration: set these in your hosting provider's environment.
+FB_HOST = os.environ.get(
+    "FB_HOST",
+    "https://aviabustout-default-rtdb.firebaseio.com"
+)
+FB_AUTH = os.environ.get("FB_AUTH", "")
 
-REQUESTS_PATH = "paidtasks_deletion_requests"
-
-APP_NAME = "PaidTasks"
-SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "support@ngelicyber.com")
+REQUESTS_PATH = "task_earn_deletion_requests"
+APP_NAME = "Task & Earn"
+SUPPORT_EMAIL = os.environ.get(
+    "SUPPORT_EMAIL",
+    "support@ngelicyber.com"
+)
 
 
 def identifier_is_valid(identifier: str) -> bool:
     identifier = identifier.strip()
-    phone_pattern = re.compile(r"^(?:\+254|0)7\d{8}$|^(?:\+254|0)1\d{8}$")
+    phone_pattern = re.compile(r"^(?:\+254|0)[17]\d{8}$")
     email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-    return bool(phone_pattern.match(identifier) or email_pattern.match(identifier))
+    return bool(
+        phone_pattern.fullmatch(identifier)
+        or email_pattern.fullmatch(identifier)
+    )
 
 
 def normalize_phone(identifier: str) -> str:
@@ -38,7 +47,8 @@ PAGE_TEMPLATE = """
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Delete My Account & Data — {{ app_name }}</title>
+<meta name="robots" content="noindex">
+<title>Delete My Account &amp; Data — {{ app_name }}</title>
 <style>
   :root {
     --ink: #16241d;
@@ -68,6 +78,7 @@ PAGE_TEMPLATE = """
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    gap: 16px;
     margin-bottom: 40px;
     border-bottom: 1px solid var(--line);
     padding-bottom: 18px;
@@ -79,7 +90,7 @@ PAGE_TEMPLATE = """
   }
   .mark span { color: var(--accent); }
   header.top .tag {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
     font-size: 12px;
     color: var(--ink-soft);
   }
@@ -90,24 +101,21 @@ PAGE_TEMPLATE = """
     max-width: 22ch;
   }
   p.lede {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
     color: var(--ink-soft);
     font-size: 15px;
     max-width: 46ch;
     margin: 0 0 36px;
   }
-  section.block {
-    margin-bottom: 34px;
-  }
+  section.block { margin-bottom: 34px; }
   h2 {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink);
     margin: 0 0 12px;
   }
   ul.data-list {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
     font-size: 14.5px;
     color: var(--ink-soft);
     margin: 0;
@@ -126,14 +134,13 @@ PAGE_TEMPLATE = """
   ul.data-list li .retain {
     color: var(--ink-soft);
     font-size: 13px;
-    white-space: nowrap;
   }
   form.card {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 4px;
     padding: 28px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
   }
   label {
     display: block;
@@ -177,7 +184,10 @@ PAGE_TEMPLATE = """
     cursor: pointer;
   }
   button.submit:hover { background: #8a2c18; }
-  button.submit:disabled { background: #c9a89f; cursor: not-allowed; }
+  button.submit:disabled {
+    background: #c9a89f;
+    cursor: not-allowed;
+  }
   #msg {
     margin-top: 16px;
     font-size: 14px;
@@ -185,15 +195,30 @@ PAGE_TEMPLATE = """
     border-radius: 3px;
     display: none;
   }
-  #msg.ok { display: block; background: #eaf4ee; color: var(--accent-dark); border: 1px solid #bfe0cc; }
-  #msg.err { display: block; background: var(--danger-bg); color: var(--danger); border: 1px solid #eecbc0; }
+  #msg.ok {
+    display: block;
+    background: #eaf4ee;
+    color: var(--accent-dark);
+    border: 1px solid #bfe0cc;
+  }
+  #msg.err {
+    display: block;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid #eecbc0;
+  }
   footer {
     margin-top: 48px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
     font-size: 12.5px;
     color: var(--ink-soft);
   }
   footer a { color: var(--accent-dark); }
+  @media (max-width: 480px) {
+    .wrap { padding: 32px 18px 56px; }
+    header.top { flex-wrap: wrap; }
+    form.card { padding: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -204,33 +229,66 @@ PAGE_TEMPLATE = """
   </header>
 
   <h1>Delete your account and its data</h1>
-  <p class="lede">Submit a request below using the phone number or email registered on your {{ app_name }} account. We process deletion requests within 30 days.</p>
+  <p class="lede">
+    Submit a request using the phone number or email registered to your
+    {{ app_name }} account. We aim to process valid deletion requests
+    within 30 days.
+  </p>
 
   <section class="block">
     <h2>WHAT GETS DELETED</h2>
     <ul class="data-list">
-      <li><span class="what">Profile (name, phone, email)</span><span class="retain">Deleted</span></li>
-      <li><span class="what">Task and earnings history</span><span class="retain">Deleted</span></li>
-      <li><span class="what">Referral records</span><span class="retain">Deleted</span></li>
-      <li><span class="what">M-Pesa withdrawal records</span><span class="retain">Kept 5 yrs — tax law</span></li>
+      <li>
+        <span class="what">Profile information</span>
+        <span class="retain">Deleted</span>
+      </li>
+      <li>
+        <span class="what">Tasks and earnings history</span>
+        <span class="retain">Deleted</span>
+      </li>
+      <li>
+        <span class="what">Referral records</span>
+        <span class="retain">Deleted</span>
+      </li>
+      <li>
+        <span class="what">Payment and withdrawal records</span>
+        <span class="retain">As legally required</span>
+      </li>
     </ul>
   </section>
 
   <form class="card" id="delForm">
-    <label for="identifier">Phone number or email used on {{ app_name }}</label>
-    <input type="text" id="identifier" name="identifier" placeholder="0712 345 678 or you@example.com" required>
+    <label for="identifier">
+      Phone number or email used on {{ app_name }}
+    </label>
+    <input
+      type="text"
+      id="identifier"
+      name="identifier"
+      placeholder="0712 345 678 or you@example.com"
+      autocomplete="email"
+      required
+    >
 
     <div class="confirm-row">
       <input type="checkbox" id="confirm" required>
-      <label for="confirm" style="font-weight:400; margin:0;">I understand this permanently deletes my {{ app_name }} account and cannot be undone.</label>
+      <label for="confirm" style="font-weight:400; margin:0;">
+        I understand that deleting my account is permanent and may remove
+        my profile, task history, earnings history, and referral records.
+      </label>
     </div>
 
-    <button type="submit" class="submit" id="submitBtn">Request account deletion</button>
-    <div id="msg"></div>
+    <button type="submit" class="submit" id="submitBtn">
+      Request account deletion
+    </button>
+    <div id="msg" role="status" aria-live="polite"></div>
   </form>
 
   <footer>
-    Questions about this process? Contact <a href="mailto:{{ support_email }}">{{ support_email }}</a>. Withdrawal records are retained where required by Kenyan tax law and deleted once that period lapses.
+    Questions? Contact
+    <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    Certain records may be retained where legally required or necessary
+    to resolve outstanding transactions.
   </footer>
 </div>
 
@@ -241,10 +299,11 @@ const btn = document.getElementById('submitBtn');
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+
   const identifier = document.getElementById('identifier').value.trim();
+
   msg.className = '';
   msg.style.display = 'none';
-
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
@@ -254,6 +313,7 @@ form.addEventListener('submit', async (e) => {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({identifier})
     });
+
     const data = await res.json();
 
     if (res.ok) {
@@ -282,7 +342,11 @@ form.addEventListener('submit', async (e) => {
 
 @app.route("/")
 def index():
-    return render_template_string(PAGE_TEMPLATE, app_name=APP_NAME, support_email=SUPPORT_EMAIL)
+    return render_template_string(
+        PAGE_TEMPLATE,
+        app_name=APP_NAME,
+        support_email=SUPPORT_EMAIL
+    )
 
 
 @app.route("/api/delete-request", methods=["POST"])
@@ -291,36 +355,52 @@ def delete_request():
     identifier = (data.get("identifier") or "").strip()
 
     if not identifier or not identifier_is_valid(identifier):
-        return jsonify({"error": "Enter a valid Kenyan phone number or email address."}), 400
+        return jsonify({
+            "error": "Enter a valid Kenyan phone number or email address."
+        }), 400
 
     if not FB_AUTH:
-        return jsonify({"error": "Server not configured. Contact support."}), 500
+        app.logger.error("Firebase authentication is not configured.")
+        return jsonify({
+            "error": "Service temporarily unavailable. Please contact support."
+        }), 500
 
     identifier_norm = normalize_phone(identifier)
     request_id = str(uuid.uuid4())
 
     payload = {
         "identifier": identifier_norm,
+        "appName": APP_NAME,
         "status": "pending",
         "requestedAt": int(time.time() * 1000),
-        "source": "web-deletion-form",
+        "source": "task-earn-web-deletion-form",
     }
 
     try:
         resp = requests.put(
-            f"{FB_HOST}/{REQUESTS_PATH}/{request_id}.json",
+            f"{FB_HOST.rstrip('/')}/{REQUESTS_PATH}/{request_id}.json",
             params={"auth": FB_AUTH},
             json=payload,
             timeout=10,
         )
         resp.raise_for_status()
     except requests.RequestException:
-        return jsonify({"error": "Could not submit your request right now. Please try again shortly."}), 502
+        app.logger.exception("Failed to save account deletion request.")
+        return jsonify({
+            "error": "Could not submit your request right now. Please try again shortly."
+        }), 502
 
     return jsonify({
-        "message": "Request received. Your account and data will be deleted within 30 days."
+        "message": (
+            "Your Task & Earn deletion request has been received. "
+            "We aim to process valid requests within 30 days."
+        )
     }), 200
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
